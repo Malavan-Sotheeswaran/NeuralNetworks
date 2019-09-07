@@ -1,4 +1,20 @@
 #include "NN.hpp"
+double NN::default_loss(std::vector<double>& output, std::vector<double>& target) { 
+    double result = 0;
+    for(size_t i; i < output.size(); i++) {
+        result += 0.5*(output[i] - target[i])*(output[i] - target[i]);
+    }
+    return result;
+}
+
+std::vector<double> NN::default_grad(std::vector<double>& output, std::vector<double>& target) {
+    std::vector<double> result(output.size());
+    for(size_t i; i < output.size(); i++) {
+        result[i] = (output[i] - target[i]);
+    }
+    return result;
+}
+
 void NN::Node::forward() {
     value = 0;
     for(auto connection : inputs) {
@@ -13,8 +29,37 @@ void NN::Node::backprop() {
     gradient = 0;
 }
 
-void NN::Node::add_input(Node& node) { 
-    inputs.push_back(Connection(node)); 
+ void NN::Node::add_input(Node& node) { 
+    inputs.push_back(Connection(node));
+}
+
+void NN::Connection::backprop(double gradient) {
+    node.update_gradient(gradient*weight);
+    weight -= node.get_value()*gradient;
+}
+
+void NN::InputLayer::load_input(std::vector<double> input) {
+    for(size_t i = 0; i < nodes.size(); i++) {
+        nodes[i].set_value(input[i]);
+    }
+}
+
+void NN::DenseLayer::feed_layer(Layer& layer) {
+    for(auto in_node : layer) {
+        for(auto node : nodes) {
+            node.add_input(in_node);
+        }
+    }
+}
+void NN::DenseLayer::forward() {
+    for(auto node : nodes){
+        node.forward();
+    }
+}
+void NN::DenseLayer::backprop() {
+    for(auto node : nodes){
+        node.backprop();
+    }
 }
 
 void NN::NeuralNetwork::add_layer(Layer& layer){

@@ -14,21 +14,8 @@ namespace util {
 namespace NN {
     class Connection;
 
-    double default_loss(std::vector<double>& output, std::vector<double>& target) { 
-        double result = 0;
-        for(size_t i; i < output.size(); i++) {
-            result += 0.5*(output[i] - target[i])*(output[i] - target[i]);
-        }
-        return result;
-    }
-
-    std::vector<double> default_grad(std::vector<double>& output, std::vector<double>& target) {
-        std::vector<double> result(output.size());
-        for(size_t i; i < output.size(); i++) {
-            result[i] = (output[i] - target[i]);
-        }
-        return result;
-    }
+    double default_loss(std::vector<double>& output, std::vector<double>& target);
+    std::vector<double> default_grad(std::vector<double>& output, std::vector<double>& target);
 
     class LossFunction{
     public:
@@ -61,10 +48,7 @@ namespace NN {
         Connection(Node& node) : node{node} {}
         double get() { return node.get_value()*weight; }
         double get_output() { return node.get_value(); }
-        void backprop(double gradient) {
-            node.update_gradient(gradient*weight);
-            weight -= node.get_value()*gradient;
-        }
+        void backprop(double gradient);
     private:
         Node& node;
         double weight = 0;
@@ -85,9 +69,7 @@ namespace NN {
         virtual std::vector<Node>::iterator begin() = 0;
         virtual std::vector<Node>::iterator end() = 0;
         virtual Node& operator[](size_t index) = 0;
-
         virtual void feed_layer(Layer& layer) = 0;
-
         size_t size() { return out_size; }
     private:
         size_t in_size;
@@ -98,20 +80,11 @@ namespace NN {
     class InputLayer : public Layer {
     public:
         InputLayer(size_t size) : Layer(0, size, NN::Layer::LayerType::Input), nodes(size) {}
-
-        void load_input(std::vector<double> input) {
-            for(size_t i = 0; i < nodes.size(); i++) {
-                nodes[i].set_value(input[i]);
-            }
-        }
-
+        void load_input(std::vector<double> input);
         void feed_layer(Layer& layer) {}
-
         void forward() {}
         void backprop() {}
-
         Node& operator[](size_t index) { return nodes[index]; }
-
         std::vector<Node>::iterator begin() { return nodes.begin(); }
         std::vector<Node>::iterator end() { return nodes.end(); }
     private:
@@ -121,29 +94,10 @@ namespace NN {
     class DenseLayer : public Layer {
     public:
         DenseLayer(size_t in_size, size_t out_size) : Layer(in_size, out_size, NN::Layer::LayerType::Dense), nodes(out_size) {}
-
-        void feed_layer(Layer& layer) {
-            for(auto in_node : layer) {
-                for(auto node : nodes) {
-                    node.add_input(in_node);
-                }
-            }
-        }
-
-        void forward() {
-            for(auto node : nodes){
-                node.forward();
-            }
-        }
-
-        void backprop() {
-            for(auto node : nodes){
-                node.backprop();
-            }
-        }
-
+        void feed_layer(Layer& layer);
+        void forward();
+        void backprop();
         Node& operator[](size_t index) { return nodes[index]; }
-
         std::vector<Node>::iterator begin() { return nodes.begin(); }
         std::vector<Node>::iterator end() { return nodes.end(); }
     private:
