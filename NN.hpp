@@ -14,17 +14,32 @@ namespace util {
 namespace NN {
     class Connection;
 
-    // double default_loss(std::vector<double> input, std::vector<double> target) { return 0; }
+    double default_loss(std::vector<double>& output, std::vector<double>& target) { 
+        double result = 0;
+        for(size_t i; i < output.size(); i++) {
+            result += 0.5*(output[i] - target[i])*(output[i] - target[i]);
+        }
+        return result;
+    }
 
-    // class LossFunction{
-    // public:
-    //     LossFunction() : function{default_loss} {}
-    //     LossFunction(double (*f) (std::vector<double>, std::vector<double>)) : function{f} {}
-    //     double operator()(std::vector<double> input, std::vector<double> target) { return function(input, target); }
-    //     std::vector<double> grad(double) { return std::vector<double>(); }
-    // private:
-    //     double (*function) (std::vector<double>,std::vector<double>);
-    // };
+    std::vector<double> default_grad(std::vector<double>& output, std::vector<double>& target) {
+        std::vector<double> result(output.size());
+        for(size_t i; i < output.size(); i++) {
+            result[i] = (output[i] - target[i]);
+        }
+        return result;
+    }
+
+    class LossFunction{
+    public:
+        LossFunction() : function{default_loss}, gradient{default_grad} {}
+        LossFunction(double (*f) (std::vector<double>&, std::vector<double>&), std::vector<double> (*g) (std::vector<double>&, std::vector<double>&)) : function{f}, gradient{g} {}
+        double operator()(std::vector<double>& output, std::vector<double>& target) { return function(output, target); }
+        std::vector<double> grad(std::vector<double>& output, std::vector<double>& target) { return gradient(output, target); }
+    private:
+        double (*function) (std::vector<double>&, std::vector<double>&);
+        std::vector<double> (*gradient)(std::vector<double>&, std::vector<double>&);
+    };
 
     class Node {
     public: 
@@ -34,13 +49,11 @@ namespace NN {
         void set_value(double value) { value = value; }
         void backprop();
         void add_input(Node& node);
-    private:
         void update_gradient(double child_gradient) { gradient += child_gradient; }
-
+    private:
         std::vector<Connection> inputs;
         double value = 0;
         double gradient = 0;
-        friend class Connection;
     };
 
     class Connection {
@@ -66,22 +79,25 @@ namespace NN {
             Pooling,
             Activation
         };
-        Layer(int in_size, int out_size, LayerType type) : in_size{in_size}, out_size{out_size}, type{type} {}
+        Layer(size_t in_size, size_t out_size, LayerType type) : in_size{in_size}, out_size{out_size}, type{type} {}
         virtual void forward() = 0;
         virtual void backprop() = 0;
         virtual std::vector<Node>::iterator begin() = 0;
         virtual std::vector<Node>::iterator end() = 0;
+        virtual Node& operator[](size_t index) = 0;
 
         virtual void feed_layer(Layer& layer) = 0;
+
+        size_t size() { return out_size; }
     private:
-        int in_size;
-        int out_size;
+        size_t in_size;
+        size_t out_size;
         LayerType type;
     };
 
     class InputLayer : public Layer {
     public:
-        InputLayer(int size) : Layer(0, size, NN::Layer::LayerType::Input), nodes(size) {}
+        InputLayer(size_t size) : Layer(0, size, NN::Layer::LayerType::Input), nodes(size) {}
 
         void load_input(std::vector<double> input) {
             for(size_t i = 0; i < nodes.size(); i++) {
@@ -94,6 +110,8 @@ namespace NN {
         void forward() {}
         void backprop() {}
 
+        Node& operator[](size_t index) { return nodes[index]; }
+
         std::vector<Node>::iterator begin() { return nodes.begin(); }
         std::vector<Node>::iterator end() { return nodes.end(); }
     private:
@@ -102,7 +120,7 @@ namespace NN {
 
     class DenseLayer : public Layer {
     public:
-        DenseLayer(int in_size, int out_size) : Layer(in_size, out_size, NN::Layer::LayerType::Dense), nodes(out_size) {}
+        DenseLayer(size_t in_size, size_t out_size) : Layer(in_size, out_size, NN::Layer::LayerType::Dense), nodes(out_size) {}
 
         void feed_layer(Layer& layer) {
             for(auto in_node : layer) {
@@ -124,23 +142,24 @@ namespace NN {
             }
         }
 
+        Node& operator[](size_t index) { return nodes[index]; }
+
         std::vector<Node>::iterator begin() { return nodes.begin(); }
         std::vector<Node>::iterator end() { return nodes.end(); }
     private:
-        std::vector<NN::Node> nodes;
+        std::vector<Node> nodes;
     };
 
     class NeuralNetwork {
     public:
-        NeuralNetwork(int input_size) : input(input_size) {}
+        NeuralNetwork(size_t input_size) : input(input_size) {}
         void add_layer(Layer& layer);
         std::vector<double> operator()(std::vector<double> input);
         void train(std::vector<std::vector<double>> input, std::vector<std::vector<double>> target);
     private:
         InputLayer input;
         std::vector<Layer*> network;
-        std::vector<Connection> output;
-        //LossFunction loss_function;
+        LossFunction loss_function;
         friend class NNBuilder;
     };
 }

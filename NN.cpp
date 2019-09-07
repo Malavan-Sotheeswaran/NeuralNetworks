@@ -25,10 +25,6 @@ void NN::NeuralNetwork::add_layer(Layer& layer){
         layer.feed_layer(*network.back());
     }
     network.push_back(&layer);
-    output.clear();
-    for(auto node : *network.back()) {
-        output.push_back(Connection(node));
-    }
 }
 
 std::vector<double> NN::NeuralNetwork::operator()(std::vector<double> input) {
@@ -36,23 +32,22 @@ std::vector<double> NN::NeuralNetwork::operator()(std::vector<double> input) {
     for(auto layer : network) {
         layer->forward();
     }
-    std::vector<double> out(output.size());
-    for(size_t i = 0; i < output.size(); i++) {
-        out[i] = output[i].get();
+    std::vector<double> out((*network.back()).size());
+    for(size_t i = 0; i < (*network.back()).size(); i++) {
+        out[i] = (*network.back())[i].get_value();
     }
     return out;
 }
 
 void NN::NeuralNetwork::train(std::vector<std::vector<double>> inputs, std::vector<std::vector<double>> targets) {
-    double loss = 0;
     for(size_t i = 0; i < inputs.size(); i++) {
-        loss += 0; //loss_function((*this)(inputs[i]), targets[i]);
-    }
-    std::vector<double> output_gradient(output.size());// = loss_function.grad(loss);
-    for(size_t i = 0; i < output.size(); i++) {
-        output[i].backprop(output_gradient[i]);
-    }
-    for(auto layer : util::reverse<std::vector<Layer*>>(network)) {
-        layer->backprop();
+        std::vector<double> output = (*this)(inputs[i]);
+        std::vector<double> output_gradient = loss_function.grad(output, targets[i]);
+        for(size_t i = 0; i < (*network.back()).size(); i++) {
+            (*network.back())[i].update_gradient(output_gradient[i]);
+        }
+        for(auto layer : util::reverse<std::vector<Layer*>>(network)) {
+            layer->backprop();
+        }
     }
 }
