@@ -14,22 +14,21 @@ namespace util {
 namespace NN {
     class Connection;
 
-    double default_loss(std::vector<double>& output, std::vector<double>& target);
-    std::vector<double> default_grad(std::vector<double>& output, std::vector<double>& target);
-
     class LossFunction{
     public:
-        LossFunction() : function{default_loss}, gradient{default_grad} {}
-        LossFunction(double (*f) (std::vector<double>&, std::vector<double>&), std::vector<double> (*g) (std::vector<double>&, std::vector<double>&)) : function{f}, gradient{g} {}
-        double operator()(std::vector<double>& output, std::vector<double>& target) { return function(output, target); }
-        std::vector<double> grad(std::vector<double>& output, std::vector<double>& target) { return gradient(output, target); }
-    private:
-        double (*function) (std::vector<double>&, std::vector<double>&);
-        std::vector<double> (*gradient)(std::vector<double>&, std::vector<double>&);
+        virtual double operator()(std::vector<double>& output, std::vector<double>& target) = 0;
+        virtual std::vector<double> grad(std::vector<double>& output, std::vector<double>& target) = 0;
+    };
+
+    class DefaultLoss : public LossFunction {
+    public:
+        DefaultLoss() {}
+        double operator()(std::vector<double>& output, std::vector<double>& target);
+        std::vector<double> grad(std::vector<double>& output, std::vector<double>& target);
     };
 
     class Node {
-    public: 
+    public:
         Node() {}
         void forward();
         double get_value() { return value; }
@@ -106,14 +105,14 @@ namespace NN {
 
     class NeuralNetwork {
     public:
-        NeuralNetwork(size_t input_size) : input(input_size) {}
+        NeuralNetwork(size_t input_size, LossFunction* loss_function=new DefaultLoss()) : input(input_size), loss_function(loss_function) {}
         void add_layer(Layer& layer);
         std::vector<double> operator()(std::vector<double> input);
         void train(std::vector<std::vector<double>> input, std::vector<std::vector<double>> target);
     private:
         InputLayer input;
         std::vector<Layer*> network;
-        LossFunction loss_function;
+        LossFunction* loss_function;
         friend class NNBuilder;
     };
 }

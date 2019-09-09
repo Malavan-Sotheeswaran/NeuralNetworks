@@ -1,5 +1,5 @@
 #include "NN.hpp"
-double NN::default_loss(std::vector<double>& output, std::vector<double>& target) { 
+double NN::DefaultLoss::operator()(std::vector<double>& output, std::vector<double>& target) { 
     double result = 0;
     for(size_t i; i < output.size(); i++) {
         result += 0.5*(output[i] - target[i])*(output[i] - target[i]);
@@ -7,7 +7,7 @@ double NN::default_loss(std::vector<double>& output, std::vector<double>& target
     return result;
 }
 
-std::vector<double> NN::default_grad(std::vector<double>& output, std::vector<double>& target) {
+std::vector<double> NN::DefaultLoss::grad(std::vector<double>& output, std::vector<double>& target) {
     std::vector<double> result(output.size());
     for(size_t i; i < output.size(); i++) {
         result[i] = (output[i] - target[i]);
@@ -87,7 +87,7 @@ std::vector<double> NN::NeuralNetwork::operator()(std::vector<double> input) {
 void NN::NeuralNetwork::train(std::vector<std::vector<double>> inputs, std::vector<std::vector<double>> targets) {
     for(size_t i = 0; i < inputs.size(); i++) {
         std::vector<double> output = (*this)(inputs[i]);
-        std::vector<double> output_gradient = loss_function.grad(output, targets[i]);
+        std::vector<double> output_gradient = loss_function->grad(output, targets[i]);
         for(size_t i = 0; i < (*network.back()).size(); i++) {
             (*network.back())[i].update_gradient(output_gradient[i]);
         }
