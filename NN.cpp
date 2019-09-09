@@ -29,7 +29,7 @@ void NN::Node::backprop() {
     gradient = 0;
 }
 
- void NN::Node::add_input(Node& node) { 
+void NN::Node::add_input(Node& node) { 
     inputs.push_back(Connection(node));
 }
 
